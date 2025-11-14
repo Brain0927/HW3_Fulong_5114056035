@@ -88,13 +88,15 @@ def load_metrics():
 
 @st.cache_data
 def list_datasets() -> list:
-    """List all available CSV datasets."""
+    """List all available CSV datasets (recursively)."""
     datasets = []
-    for root in ["data", "datasets"]:
-        if os.path.isdir(root):
-            for name in os.listdir(root):
-                if name.endswith(".csv"):
-                    datasets.append(os.path.join(root, name))
+    for root_dir in ["data", "datasets"]:
+        if os.path.isdir(root_dir):
+            # Recursively walk through all subdirectories
+            for dirpath, dirnames, filenames in os.walk(root_dir):
+                for name in filenames:
+                    if name.endswith(".csv"):
+                        datasets.append(os.path.join(dirpath, name))
     return sorted(datasets)
 
 
