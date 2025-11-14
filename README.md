@@ -89,7 +89,9 @@ Then open your browser to `http://localhost:8501`
 │   ├── preprocess_emails.py           # CLI: Preprocessing pipeline
 │   └── train_spam_classifier.py       # CLI: Training with parameters
 ├── data/
-│   └── sms_spam_no_header.csv         # Dataset (auto-downloaded)
+│   ├── sms_spam_no_header.csv         # Dataset (auto-downloaded)
+│   ├── sms_spam_clean.csv             # Cleaned 2-column format (label, message)
+│   └── sms_spam_preprocessing.csv     # 9-column preprocessing pipeline (NEW)
 ├── models/
 │   ├── logistic_regression.pkl        # Trained model (joblib)
 │   ├── vectorizer.pkl                 # TF-IDF vectorizer (joblib)
@@ -161,11 +163,113 @@ After training, check `models/metrics_logistic_regression.json` for:
 - ROC-AUC (for models supporting `predict_proba`)
 - Classification Report
 
-### Visualization
-- Model performance dashboard
-- Accuracy and F1 comparison charts
-- Spam probability gauge
-- Example-based classification UI
+### Streamlit App Features
+**Multi-Format CSV Support:**
+- ✅ Simple 2-column CSV format (label, text)
+- ✅ **NEW**: 9-column preprocessing pipeline CSV
+  - Visualize 7 preprocessing stages in real-time
+  - Stage-by-stage text transformation display
+  - Token changes tracking across each stage
+  - Character & token count metrics
+  - Interactive stage selector in sidebar
+
+**Main Dashboard Tabs:**
+1. **📊 Data Overview**
+   - Class distribution visualization (Plotly/Matplotlib)
+   - Top-N token frequency analysis
+   - Dataset statistics (total messages, spam ratio)
+
+2. **🔍 Model Performance**
+   - Metrics overview (accuracy, precision, recall, F1)
+   - Confusion matrix heatmap
+   - Threshold sweep analysis
+   - ROC-AUC score display
+
+3. **💬 Live Inference**
+   - Real-time message classification
+   - Spam probability gauge with threshold indicator
+   - Text normalization display
+   - Quick example buttons (spam/ham samples)
+   - Detailed prediction results
+
+4. **🔄 Preprocessing Pipeline** (NEW - for 9-column CSV)
+   - Stage-by-stage transformation visualization
+   - Text progression through preprocessing pipeline
+   - Token changes at each stage (removals/additions)
+   - Character and token statistics per stage
+   - Ham/spam example quick selectors
+
+5. **ℹ️ About**
+   - Project overview and technologies
+   - Dataset information
+   - Model metrics summary
+   - Learning resources and references
+
+**Sidebar Configuration:**
+- Dataset selector (auto-discovers CSV files)
+- Preprocessing stage selector (when applicable)
+- Visualization mode: Plotly / Matplotlib / Both
+- Decision threshold slider
+- Top-N tokens selector
+- Model parameters (test size, random seed)
+- Model info panel
+- ROC-AUC (for models supporting `predict_proba`)
+- Classification Report
+
+## 🎯 Multi-Format CSV Support
+
+The Streamlit app automatically detects and handles different CSV formats:
+
+### Simple Format (2 columns)
+**File**: `data/sms_spam_clean.csv`
+```csv
+label,message
+ham,Go until jurong point crazy available...
+spam,Free entry to WIN cash...
+```
+
+**Usage in App:**
+- Select from dropdown: `data/sms_spam_clean.csv`
+- Shows class distribution and token analysis
+- Standard model evaluation tabs
+
+### Preprocessing Pipeline Format (8 columns)
+**File**: `data/sms_spam_preprocessing.csv` (NEW)
+```csv
+label,text_raw,text_lower,text_contacts_masked,text_numbers,text_stripped,text_whitespace,text_stopwords_removed
+ham,Go until jurong...,go until jurong...,go until jurong...,go until jurong...,go until jurong...,go until jurong...,go until jurong...
+```
+
+**Pipeline Stages:**
+1. `text_raw` — Original message
+2. `text_lower` — Lowercase conversion
+3. `text_contacts_masked` — Email/phone masking
+4. `text_numbers` — Number replacement (<NUM>)
+5. `text_stripped` — Punctuation removal
+6. `text_whitespace` — Whitespace normalization
+7. `text_stopwords_removed` — Stop word filtering
+
+**Usage in App:**
+1. Open Streamlit app: `streamlit run app.py`
+2. Select dataset: `data/sms_spam_preprocessing.csv`
+3. App detects preprocessing pipeline format
+4. New tab appears: **"🔄 Preprocessing Pipeline"**
+5. Use sidebar selector to choose stage
+6. Visualize text transformation:
+   - Stage-by-stage comparison
+   - Token count metrics
+   - Changes tracking (removed/added tokens)
+   - Ham/spam examples
+
+**Example Transformation:**
+```
+text_raw:               "Free entry in 2 a wkly comp"
+↓ text_lower:          "free entry in 2 a wkly comp"
+↓ text_numbers:        "free entry in <NUM> a wkly comp"
+↓ text_stripped:       "free entry in <NUM> a wkly comp"
+↓ text_whitespace:     "free entry in <NUM> a wkly comp"
+↓ text_stopwords_removed: "free entry <NUM> wkly comp"
+```
 
 ## 🔧 Advanced Usage
 
