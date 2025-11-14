@@ -24,8 +24,8 @@ This project implements an end-to-end spam email classification system:
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/huanchen1107/2025ML-spamEmail.git
-cd 2025ML-spamEmail
+git clone https://github.com/Brain0927/HW3_Fulong_5114056035.git
+cd HW3_Fulong_5114056035
 ```
 
 ### 2. Set Up Environment
