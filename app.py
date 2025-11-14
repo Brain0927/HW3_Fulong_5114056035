@@ -98,6 +98,51 @@ def list_datasets() -> list:
     return sorted(datasets)
 
 
+def detect_csv_format(df: pd.DataFrame) -> str:
+    """Detect CSV format type: 'simple' (2 columns) or 'preprocessing' (8+ columns with preprocessing stages)."""
+    cols = list(df.columns)
+    
+    # Check for preprocessing pipeline columns
+    preprocessing_markers = [
+        'text_raw', 'text_lower', 'text_contacts_masked', 'text_numbers',
+        'text_stripped', 'text_whitespace', 'text_stopwords_removed'
+    ]
+    
+    if len(cols) >= 8:
+        # Check if it has preprocessing stage columns
+        pipeline_cols = [c for c in cols if any(marker in str(c).lower() for marker in preprocessing_markers)]
+        if len(pipeline_cols) >= 3:  # Has at least 3 preprocessing stages
+            return 'preprocessing'
+    
+    # Default to simple format
+    return 'simple'
+
+
+def get_preprocessing_stages(df: pd.DataFrame) -> dict:
+    """Extract preprocessing stages from dataframe."""
+    cols = list(df.columns)
+    
+    # Order of preprocessing stages
+    stage_order = [
+        'text_raw',
+        'text_lower',
+        'text_contacts_masked',
+        'text_numbers',
+        'text_stripped',
+        'text_whitespace',
+        'text_stopwords_removed'
+    ]
+    
+    stages = {}
+    for stage in stage_order:
+        # Find column matching this stage (case-insensitive)
+        matching_col = next((c for c in cols if stage in str(c).lower()), None)
+        if matching_col:
+            stages[stage] = matching_col
+    
+    return stages
+
+
 def infer_columns(df: pd.DataFrame) -> tuple:
     """Infer label and text columns from dataframe."""
     cols = list(df.columns)
@@ -122,7 +167,7 @@ def token_topn(series: pd.Series, topn: int = 20) -> List[Tuple[str, int]]:
 
 @st.cache_data
 def load_dataset(path: str = None):
-    """Load and preprocess dataset."""
+    """Load and preprocess dataset (supports both simple and preprocessing pipeline formats)."""
     try:
         if path and os.path.exists(path):
             df = pd.read_csv(path)
@@ -133,12 +178,16 @@ def load_dataset(path: str = None):
                 'label': labels.values
             })
         
+        # Detect CSV format
+        csv_format = detect_csv_format(df)
+        
         # Infer columns
         label_col, text_col = infer_columns(df)
         
         if label_col and text_col:
             df_clean = df[[label_col, text_col]].copy()
             df_clean.columns = ['label', 'text']
+            
             # Map labels to 0/1 if needed
             if df_clean['label'].dtype == 'object':
                 unique_vals = df_clean['label'].unique()
@@ -160,6 +209,12 @@ def load_dataset(path: str = None):
                     df_clean['label_text'] = df_clean['label'].apply(
                         lambda x: 'spam' if x == max(unique_labels) else 'ham'
                     )
+            
+            # Store format info in session state
+            st.session_state.csv_format = csv_format
+            if csv_format == 'preprocessing':
+                st.session_state.preprocessing_stages = get_preprocessing_stages(df)
+                st.session_state.full_df = df  # Store full dataframe with all columns
             
             return df_clean
         return None
@@ -243,6 +298,26 @@ def main():
         else:
             selected_ds = None
         
+        # Load dataset to detect format
+        df_preview = load_dataset(selected_ds) if 'selected_ds' in locals() else None
+        csv_format = st.session_state.get('csv_format', 'simple')
+        
+        # Show format info
+        if csv_format == 'preprocessing':
+            st.info("📈 **Preprocessing Pipeline CSV Detected**\nYou can visualize each preprocessing stage!")
+            
+            # Preprocessing stage selector
+            stages_dict = st.session_state.get('preprocessing_stages', {})
+            if stages_dict:
+                preprocessing_stages = list(stages_dict.keys())
+                selected_stage = st.selectbox(
+                    "Select Preprocessing Stage",
+                    options=['All'] + preprocessing_stages,
+                    format_func=lambda x: x.replace('_', ' ').title() if x != 'All' else 'View All Stages',
+                    help="Choose a specific preprocessing stage to visualize the transformation"
+                )
+                st.session_state.selected_preprocessing_stage = selected_stage
+        
         st.divider()
         
         # Section 2: Model & Analysis Settings
@@ -322,11 +397,12 @@ def main():
         st.session_state.random_seed = random_seed
     
     # Main navigation
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📊 Data Overview",
         "🔍 Model Performance",
         "💬 Live Inference",
-        "ℹ️ About"
+        "🔄 Preprocessing Pipeline" if st.session_state.get('csv_format') == 'preprocessing' else "ℹ️ About",
+        "ℹ️ About" if st.session_state.get('csv_format') == 'preprocessing' else "📌 Placeholder"
     ])
     
     # Tab 1: Data Overview
@@ -570,8 +646,139 @@ def main():
                 with result_col3:
                     st.metric("Decision Threshold", f"{threshold:.2f}")
     
-    # Tab 4: About
-    with tab4:
+    # Tab 4: Preprocessing Pipeline (if available)
+    if st.session_state.get('csv_format') == 'preprocessing':
+        with tab4:
+            st.header("🔄 Preprocessing Pipeline Visualization")
+            st.caption("Visualize how text is transformed through different preprocessing stages")
+            
+            full_df = st.session_state.get('full_df')
+            stages_dict = st.session_state.get('preprocessing_stages', {})
+            selected_stage = st.session_state.get('selected_preprocessing_stage', 'All')
+            
+            if full_df is not None and stages_dict:
+                # Show message sample
+                st.subheader("Select a Message to Visualize")
+                
+                # Get ham and spam examples
+                ham_indices = full_df[full_df['label'] == 'ham'].index.tolist()
+                spam_indices = full_df[full_df['label'] == 'spam'].index.tolist()
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("📩 Show HAM Example", use_container_width=True):
+                        st.session_state.selected_idx = ham_indices[0] if ham_indices else 0
+                
+                with col2:
+                    if st.button("🚨 Show SPAM Example", use_container_width=True):
+                        st.session_state.selected_idx = spam_indices[0] if spam_indices else 0
+                
+                if 'selected_idx' not in st.session_state:
+                    st.session_state.selected_idx = 0
+                
+                selected_idx = st.session_state.selected_idx
+                
+                # Show preprocessing pipeline
+                st.divider()
+                st.subheader(f"Preprocessing Stages (Row {selected_idx})")
+                
+                # Get stage columns
+                stage_order = [
+                    'text_raw',
+                    'text_lower',
+                    'text_contacts_masked',
+                    'text_numbers',
+                    'text_stripped',
+                    'text_whitespace',
+                    'text_stopwords_removed'
+                ]
+                
+                # Filter stages based on selection
+                if selected_stage == 'All':
+                    stages_to_show = stage_order
+                else:
+                    stages_to_show = [selected_stage]
+                
+                # Create comparison view
+                for stage in stages_to_show:
+                    stage_col = stages_dict.get(stage)
+                    if stage_col and stage_col in full_df.columns:
+                        stage_name = stage.replace('_', ' ').title()
+                        text_value = str(full_df.loc[selected_idx, stage_col])
+                        
+                        # Create expandable section for each stage
+                        with st.expander(f"📝 {stage_name}", expanded=(stage == 'text_raw')):
+                            st.write(text_value)
+                            
+                            # Show character count and token count
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Characters", len(text_value))
+                            with col2:
+                                st.metric("Tokens", len(text_value.split()))
+                            with col3:
+                                st.metric("Avg Token Length", f"{len(text_value)/max(1, len(text_value.split())):.1f}")
+                
+                # Show transformation details
+                st.divider()
+                st.subheader("Transformation Summary")
+                
+                summary_data = []
+                for stage in stage_order:
+                    stage_col = stages_dict.get(stage)
+                    if stage_col and stage_col in full_df.columns:
+                        text_val = str(full_df.loc[selected_idx, stage_col])
+                        summary_data.append({
+                            'Stage': stage.replace('_', ' ').title(),
+                            'Characters': len(text_val),
+                            'Tokens': len(text_val.split()),
+                            'Avg Length': f"{len(text_val)/max(1, len(text_val.split())):.1f}"
+                        })
+                
+                if summary_data:
+                    summary_df = pd.DataFrame(summary_data)
+                    st.dataframe(summary_df, use_container_width=True)
+                
+                # Show token changes across stages
+                st.divider()
+                st.subheader("Token Changes Across Stages")
+                
+                # Extract tokens at each stage
+                stage_tokens = {}
+                for stage in stage_order:
+                    stage_col = stages_dict.get(stage)
+                    if stage_col and stage_col in full_df.columns:
+                        text_val = str(full_df.loc[selected_idx, stage_col])
+                        tokens = text_val.split()
+                        stage_tokens[stage.replace('_', ' ').title()] = set(tokens)
+                
+                # Calculate token losses
+                if stage_tokens:
+                    stages_list = list(stage_tokens.keys())
+                    if len(stages_list) > 1:
+                        token_changes = []
+                        for i in range(len(stages_list) - 1):
+                            current = stage_tokens[stages_list[i]]
+                            next_stage = stage_tokens[stages_list[i + 1]]
+                            removed = current - next_stage
+                            added = next_stage - current
+                            
+                            token_changes.append({
+                                'From': stages_list[i],
+                                'To': stages_list[i + 1],
+                                'Removed': ', '.join(sorted(list(removed)[:5])) + ('...' if len(removed) > 5 else ''),
+                                'Tokens Removed': len(removed),
+                                'Tokens Added': len(added)
+                            })
+                        
+                        if token_changes:
+                            changes_df = pd.DataFrame(token_changes)
+                            st.dataframe(changes_df, use_container_width=True)
+    
+    # Tab 5 (or Tab 4): About
+    about_tab = tab5 if st.session_state.get('csv_format') == 'preprocessing' else tab4
+    
+    with about_tab:
         st.header("About This Project")
         
         col1, col2 = st.columns([2, 1])
