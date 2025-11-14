@@ -87,6 +87,26 @@ def load_metrics():
 
 
 @st.cache_data
+def load_threshold_sweep():
+    """Load threshold sweep analysis data."""
+    try:
+        with open("models/threshold_sweep.json", 'r') as f:
+            return json.load(f)
+    except:
+        return None
+
+
+@st.cache_data
+def load_test_predictions():
+    """Load test predictions for ROC/PR curves."""
+    try:
+        with open("models/test_predictions.json", 'r') as f:
+            return json.load(f)
+    except:
+        return None
+
+
+@st.cache_data
 def list_datasets() -> list:
     """List all available CSV datasets (recursively)."""
     datasets = []
@@ -487,16 +507,19 @@ def main():
     
     # Tab 2: Model Performance
     with tab2:
-        st.header("Model Performance")
+        st.header("🔍 Model Performance")
         
         model, vectorizer, error = load_resources()
         metrics = load_metrics()
+        threshold_sweep = load_threshold_sweep()
+        test_predictions = load_test_predictions()
         
         if error or metrics is None:
             st.error("Could not load model or metrics.")
             return
         
         # Metrics overview
+        st.subheader("Overall Metrics")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Test Accuracy", f"{metrics.get('test_accuracy', 0):.4f}")
@@ -506,6 +529,9 @@ def main():
             st.metric("Test Recall", f"{metrics.get('test_recall', 0):.4f}")
         with col4:
             st.metric("Test F1 Score", f"{metrics.get('test_f1', 0):.4f}")
+        
+        if 'test_roc_auc' in metrics:
+            st.info(f"📈 **ROC-AUC Score**: {metrics['test_roc_auc']:.4f}")
         
         st.divider()
         
@@ -525,28 +551,121 @@ def main():
             fig.update_layout(height=400)
             st.plotly_chart(fig, use_container_width=True)
         
-        # Threshold sweep
-        st.subheader("Threshold Sweep Analysis")
-        st.caption("Performance metrics across different decision thresholds")
+        st.divider()
         
-        # Simulate threshold sweep (requires test predictions)
-        ths = np.round(np.linspace(0.3, 0.8, 11), 3)
-        rows = []
-        for t in ths:
-            # Estimated based on baseline metrics
-            rows.append({
-                "Threshold": f"{t:.2f}",
-                "Precision": max(0.85, 1 - (t - 0.5) * 0.3),
-                "Recall": max(0.70, 1 - abs(t - 0.5) * 0.5),
-                "F1 Score": 0.90 - abs(t - 0.5) * 0.2
-            })
+        # Threshold sweep with real data
+        st.subheader("⚙️ Threshold Sweep Analysis")
+        st.caption("Adjust the threshold to balance Precision vs Recall")
         
-        sweep_df = pd.DataFrame(rows)
-        st.dataframe(sweep_df, use_container_width=True)
+        if threshold_sweep:
+            # Convert to DataFrame
+            sweep_df = pd.DataFrame(threshold_sweep)
+            
+            # Display as interactive table
+            st.dataframe(sweep_df, use_container_width=True)
+            
+            # Plot threshold sweep curves
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Precision-Recall vs Threshold
+                fig_pr = go.Figure()
+                fig_pr.add_trace(go.Scatter(
+                    x=sweep_df['threshold'],
+                    y=sweep_df['precision'],
+                    name='Precision',
+                    mode='lines+markers',
+                    line=dict(color='#1f77b4', width=3)
+                ))
+                fig_pr.add_trace(go.Scatter(
+                    x=sweep_df['threshold'],
+                    y=sweep_df['recall'],
+                    name='Recall',
+                    mode='lines+markers',
+                    line=dict(color='#ff7f0e', width=3)
+                ))
+                fig_pr.update_layout(
+                    title="Precision & Recall vs Threshold",
+                    xaxis_title="Threshold",
+                    yaxis_title="Score",
+                    hovermode='x unified',
+                    height=400
+                )
+                st.plotly_chart(fig_pr, use_container_width=True)
+            
+            with col2:
+                # F1 Score vs Threshold
+                fig_f1 = go.Figure()
+                fig_f1.add_trace(go.Scatter(
+                    x=sweep_df['threshold'],
+                    y=sweep_df['f1'],
+                    name='F1 Score',
+                    fill='tozeroy',
+                    mode='lines+markers',
+                    line=dict(color='#2ca02c', width=3),
+                    marker=dict(size=8)
+                ))
+                
+                # Mark the current threshold
+                current_threshold = st.session_state.get('threshold', 0.5)
+                fig_f1.add_vline(
+                    x=current_threshold,
+                    line_dash="dash",
+                    line_color="red",
+                    annotation_text=f"Current: {current_threshold:.2f}",
+                    annotation_position="top right"
+                )
+                
+                fig_f1.update_layout(
+                    title="F1 Score vs Threshold",
+                    xaxis_title="Threshold",
+                    yaxis_title="F1 Score",
+                    height=400
+                )
+                st.plotly_chart(fig_f1, use_container_width=True)
         
-        # ROC-AUC info
-        if 'test_roc_auc' in metrics:
-            st.metric("Test ROC-AUC", f"{metrics['test_roc_auc']:.4f}")
+        st.divider()
+        
+        # ROC Curve (if we have predictions)
+        st.subheader("ROC Curve")
+        if test_predictions:
+            from sklearn.metrics import roc_curve, auc
+            
+            y_true = np.array(test_predictions['y_true'])
+            y_proba = np.array(test_predictions['y_proba'])
+            
+            fpr, tpr, _ = roc_curve(y_true, y_proba)
+            roc_auc = auc(fpr, tpr)
+            
+            fig_roc = go.Figure()
+            fig_roc.add_trace(go.Scatter(
+                x=fpr,
+                y=tpr,
+                name=f'ROC Curve (AUC = {roc_auc:.3f})',
+                mode='lines',
+                line=dict(color='#d62728', width=3)
+            ))
+            
+            # Add diagonal reference line
+            fig_roc.add_trace(go.Scatter(
+                x=[0, 1],
+                y=[0, 1],
+                name='Random Classifier',
+                mode='lines',
+                line=dict(color='gray', width=2, dash='dash')
+            ))
+            
+            fig_roc.update_layout(
+                title=f'ROC Curve (AUC = {roc_auc:.4f})',
+                xaxis_title='False Positive Rate',
+                yaxis_title='True Positive Rate',
+                height=500,
+                hovermode='closest'
+            )
+            st.plotly_chart(fig_roc, use_container_width=True)
+        else:
+            st.info("ROC curve data not available. Generate with: python train.py")
+    
     
     # Tab 3: Live Inference
     with tab3:
