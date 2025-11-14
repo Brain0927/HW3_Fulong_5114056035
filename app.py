@@ -15,8 +15,12 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
-import matplotlib.pyplot as plt
-import seaborn as sns
+try:
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
 from sklearn.metrics import (
     confusion_matrix, roc_curve, auc, precision_recall_curve,
     precision_score, recall_score, f1_score, PrecisionRecallDisplay
@@ -186,12 +190,18 @@ def main():
                     top = token_topn(subset, topn)
                     if top:
                         toks, freqs = zip(*top)
-                        fig, ax = plt.subplots(figsize=(8, 5))
-                        sns.barplot(x=list(freqs), y=list(toks), ax=ax, palette="viridis")
-                        ax.set_xlabel("Frequency")
-                        ax.set_ylabel("Token")
-                        ax.set_title(f"Top {topn} Tokens in {label_text.upper()}")
-                        st.pyplot(fig)
+                        # Use Plotly for better compatibility
+                        fig = go.Figure(data=[
+                            go.Bar(y=list(toks), x=list(freqs), orientation='h',
+                                   marker=dict(color=list(freqs), colorscale='Viridis'))
+                        ])
+                        fig.update_layout(
+                            title=f"Top {topn} Tokens in {label_text.upper()}",
+                            xaxis_title="Frequency",
+                            yaxis_title="Token",
+                            height=500
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
         else:
             st.error("Could not load dataset.")
     
@@ -325,17 +335,27 @@ def main():
                     confidence = probability if prediction == 1 else (1 - probability)
                     st.metric("Confidence", f"{confidence*100:.1f}%")
                 
-                # Probability bar with threshold marker
-                fig, ax = plt.subplots(figsize=(10, 1))
+                # Probability bar with threshold marker (Plotly version)
+                fig = go.Figure()
                 color = "#d62728" if prediction == 1 else "#1f77b4"
-                ax.barh([0], [probability], color=color, height=0.3)
-                ax.axvline(threshold, color="black", linestyle="--", linewidth=2, label=f"Threshold ({threshold:.2f})")
-                ax.set_xlim(0, 1)
-                ax.set_yticks([])
-                ax.set_xlabel("Spam Probability")
-                ax.legend(loc="upper right")
-                ax.text(probability + 0.02, 0, f"{probability:.4f}", va="center", fontsize=12, fontweight="bold")
-                st.pyplot(fig)
+                fig.add_trace(go.Bar(
+                    x=[probability],
+                    orientation='h',
+                    marker=dict(color=color),
+                    name='Spam Probability',
+                    text=f"{probability:.4f}",
+                    textposition='outside'
+                ))
+                fig.add_vline(x=threshold, line_dash="dash", line_color="black",
+                            annotation_text=f"Threshold: {threshold:.2f}",
+                            annotation_position="top")
+                fig.update_layout(
+                    xaxis_title="Spam Probability",
+                    showlegend=False,
+                    height=200,
+                    xaxis=dict(range=[0, 1])
+                )
+                st.plotly_chart(fig, use_container_width=True)
                 
                 # Additional stats
                 st.divider()
