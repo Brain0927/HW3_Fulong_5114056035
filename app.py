@@ -144,7 +144,23 @@ def load_dataset(path: str = None):
                 unique_vals = df_clean['label'].unique()
                 if 'spam' in unique_vals and 'ham' in unique_vals:
                     df_clean['label'] = df_clean['label'].map({'spam': 1, 'ham': 0})
-            df_clean['label_text'] = df_clean['label'].map({0: 'ham', 1: 'spam'})
+                elif 'spam' in str(df_clean['label'].iloc[0]).lower() or 'ham' in str(df_clean['label'].iloc[0]).lower():
+                    # Handle case-insensitive labels
+                    df_clean['label'] = df_clean['label'].apply(
+                        lambda x: 1 if 'spam' in str(x).lower() else 0
+                    )
+            
+            # Create label_text mapping
+            try:
+                df_clean['label_text'] = df_clean['label'].map({0: 'ham', 1: 'spam'})
+            except:
+                # Fallback: create mapping from unique values
+                unique_labels = df_clean['label'].unique()
+                if len(unique_labels) == 2:
+                    df_clean['label_text'] = df_clean['label'].apply(
+                        lambda x: 'spam' if x == max(unique_labels) else 'ham'
+                    )
+            
             return df_clean
         return None
     except Exception as e:
