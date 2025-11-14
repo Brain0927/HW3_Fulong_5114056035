@@ -44,6 +44,105 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Custom CSS for tab styling and highlighting
+st.markdown("""
+<style>
+/* Tab container styling */
+div[data-testid="stTabs"] {
+    margin-top: 1rem;
+}
+
+/* Tab button styling */
+button[data-testid="stTabButtonContainer"] {
+    background-color: transparent;
+}
+
+/* Active tab styling */
+[data-testid="stTabs"] [aria-selected="true"] {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    border-radius: 8px;
+    padding: 8px 16px;
+}
+
+/* Inactive tab styling */
+[data-testid="stTabs"] [aria-selected="false"] {
+    background-color: #f0f2f6;
+    color: #31333b;
+    border-radius: 8px;
+    padding: 8px 16px;
+    transition: all 0.3s ease;
+}
+
+/* Tab hover effect */
+[data-testid="stTabs"] [aria-selected="false"]:hover {
+    background-color: #e0e3ed;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Tab content background */
+[data-testid="stTabContent"] {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+    padding: 1.5rem;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+
+/* Metric cards enhancement */
+[data-testid="stMetric"] {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 3px solid #667eea;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Info box styling */
+div[data-testid="stAlert"] {
+    border-radius: 8px;
+    border-left: 4px solid;
+}
+
+/* Button styling */
+button {
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+button[kind="primary"] {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+button[kind="primary"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Divider enhancement */
+hr {
+    margin: 2rem 0;
+    border: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #667eea, transparent);
+}
+
+/* Subheader styling */
+h2, h3 {
+    color: #667eea;
+    font-weight: 600;
+}
+
+/* Section styling */
+[data-testid="stColumn"] {
+    border-radius: 8px;
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 # Text normalization (matching training preprocessing)
 URL_RE = re.compile(r"https?://\S+|www\.\S+", re.IGNORECASE)
@@ -300,8 +399,17 @@ def plot_tokens_mpl(df: pd.DataFrame, label_text: str, label_idx: int, topn: int
 
 
 def main():
-    st.title("📧 Spam Email Classification — Advanced Dashboard")
-    st.markdown("**Phase 4+ Visualizations** — Data distribution, token analysis, model performance & live inference")
+    # Enhanced title with styling
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                padding: 2rem; border-radius: 10px; margin-bottom: 2rem;
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
+        <h1 style="color: white; margin: 0; text-align: center;">📧 Spam Email Classification</h1>
+        <h3 style="color: #e0d5ff; margin: 0.5rem 0 0 0; text-align: center;">Advanced Dashboard with ML & Visualizations</h3>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("**Phase 4+ Visualizations** — Data distribution, token analysis, model performance & live inference", help="Navigate through tabs to explore different features")
     
     # Sidebar controls
     with st.sidebar:
@@ -429,7 +537,12 @@ def main():
     
     # Tab 1: Data Overview
     with tab1:
-        st.header("Data Overview")
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, rgba(102, 200, 234, 0.1) 0%, rgba(150, 180, 200, 0.1) 100%);
+                    padding: 1.5rem; border-radius: 8px; border-left: 4px solid #66c8ea;">
+        """, unsafe_allow_html=True)
+        
+        st.header("📊 Data Overview")
         
         # Load selected or default dataset
         df = load_dataset(selected_ds) if 'selected_ds' in locals() else load_dataset()
@@ -507,6 +620,11 @@ def main():
     
     # Tab 2: Model Performance
     with tab2:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, rgba(234, 110, 102, 0.1) 0%, rgba(200, 150, 100, 0.1) 100%);
+                    padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ea6e66;">
+        """, unsafe_allow_html=True)
+        
         st.header("🔍 Model Performance")
         
         model, vectorizer, error = load_resources()
@@ -669,7 +787,12 @@ def main():
     
     # Tab 3: Live Inference
     with tab3:
-        st.header("Live Inference")
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, rgba(102, 234, 200, 0.1) 0%, rgba(100, 200, 180, 0.1) 100%);
+                    padding: 1.5rem; border-radius: 8px; border-left: 4px solid #66eac8;">
+        """, unsafe_allow_html=True)
+        
+        st.header("💬 Live Inference")
         st.caption("Enter or select a message to classify in real-time")
         
         model, vectorizer, error = load_resources()
@@ -770,6 +893,11 @@ def main():
     # Tab 4: Preprocessing Pipeline (if available)
     if st.session_state.get('csv_format') == 'preprocessing':
         with tab4:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, rgba(234, 180, 102, 0.1) 0%, rgba(220, 180, 150, 0.1) 100%);
+                        padding: 1.5rem; border-radius: 8px; border-left: 4px solid #eab466;">
+            """, unsafe_allow_html=True)
+            
             st.header("🔄 Preprocessing Pipeline Visualization")
             st.caption("Visualize how text is transformed through different preprocessing stages")
             
@@ -900,7 +1028,12 @@ def main():
     about_tab = tab5 if st.session_state.get('csv_format') == 'preprocessing' else tab4
     
     with about_tab:
-        st.header("About This Project")
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, rgba(180, 160, 234, 0.1) 0%, rgba(200, 180, 220, 0.1) 100%);
+                    padding: 1.5rem; border-radius: 8px; border-left: 4px solid #b4a0ea;">
+        """, unsafe_allow_html=True)
+        
+        st.header("ℹ️ About This Project")
         
         col1, col2 = st.columns([2, 1])
         
