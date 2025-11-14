@@ -112,6 +112,14 @@ def infer_columns(df: pd.DataFrame) -> tuple:
     return label_col, text_col
 
 
+def token_topn(series: pd.Series, topn: int = 20) -> List[Tuple[str, int]]:
+    """Extract top-N most frequent tokens."""
+    counter = Counter()
+    for s in series.astype(str):
+        counter.update(s.split())
+    return counter.most_common(topn)
+
+
 @st.cache_data
 def load_dataset(path: str = None):
     """Load and preprocess dataset."""
@@ -144,12 +152,58 @@ def load_dataset(path: str = None):
         return None
 
 
-def token_topn(series: pd.Series, topn: int = 20) -> List[Tuple[str, int]]:
-    """Extract top-N most frequent tokens."""
-    counter = Counter()
-    for s in series.astype(str):
-        counter.update(s.split())
-    return counter.most_common(topn)
+def plot_class_distribution_mpl(df: pd.DataFrame) -> None:
+    """Plot class distribution using matplotlib."""
+    if not HAS_MATPLOTLIB:
+        st.warning("Matplotlib not available. Use Plotly visualization instead.")
+        return
+    
+    counts = df['label_text'].value_counts()
+    fig, ax = plt.subplots(figsize=(8, 5))
+    colors = ['#ff6b6b', '#51cf66']  # Red for spam, green for ham
+    bars = ax.bar(counts.index, counts.values, color=colors, edgecolor='black', linewidth=1.5)
+    
+    # Add value labels on bars
+    for bar in bars:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2., height,
+                f'{int(height)}\n({height/len(df)*100:.1f}%)',
+                ha='center', va='bottom', fontweight='bold', fontsize=11)
+    
+    ax.set_xlabel('Class', fontsize=12, fontweight='bold')
+    ax.set_ylabel('Count', fontsize=12, fontweight='bold')
+    ax.set_title('Class Distribution', fontsize=14, fontweight='bold')
+    ax.grid(axis='y', alpha=0.3, linestyle='--')
+    plt.tight_layout()
+    return fig
+
+
+def plot_tokens_mpl(df: pd.DataFrame, label_text: str, label_idx: int, topn: int = 20) -> None:
+    """Plot token frequency using matplotlib."""
+    if not HAS_MATPLOTLIB:
+        st.warning("Matplotlib not available. Use Plotly visualization instead.")
+        return
+    
+    subset = df[df['label'] == label_idx]['text']
+    top = token_topn(subset, topn)
+    
+    if not top:
+        st.info(f"No tokens found for {label_text}.")
+        return
+    
+    toks, freqs = zip(*top)
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    colors_map = plt.cm.viridis(np.linspace(0, 1, len(toks)))
+    ax.barh(list(toks), list(freqs), color=colors_map, edgecolor='black', linewidth=0.5)
+    
+    ax.set_xlabel('Frequency', fontsize=11, fontweight='bold')
+    ax.set_ylabel('Token', fontsize=11, fontweight='bold')
+    ax.set_title(f'Top {topn} Tokens in {label_text.upper()}', fontsize=12, fontweight='bold')
+    ax.invert_yaxis()
+    ax.grid(axis='x', alpha=0.3, linestyle='--')
+    plt.tight_layout()
+    return fig
 
 
 def main():
@@ -158,20 +212,32 @@ def main():
     
     # Sidebar controls
     with st.sidebar:
-        st.header("⚙️ Controls & Data")
+        st.header("⚙️ Configuration")
         
-        # Dataset selector
+        # Section 1: Data Input
+        st.subheader("📊 Data Input")
         datasets = list_datasets()
         if datasets:
             selected_ds = st.selectbox(
-                "📁 Select Dataset",
+                "Select Dataset",
                 options=[None] + datasets,
-                format_func=lambda x: "Default (built-in)" if x is None else x
+                format_func=lambda x: "Default (built-in)" if x is None else x,
+                help="Choose which CSV dataset to analyze"
             )
         else:
             selected_ds = None
         
         st.divider()
+        
+        # Section 2: Model & Analysis Settings
+        st.subheader("🔬 Analysis Settings")
+        
+        # Visualization mode
+        viz_mode = st.radio(
+            "Visualization Type",
+            options=["Plotly (Interactive)", "Matplotlib (Publication)", "Both"],
+            help="Choose visualization library for charts"
+        )
         
         # Threshold slider
         threshold = st.slider(
@@ -180,21 +246,64 @@ def main():
             max_value=0.9,
             value=0.5,
             step=0.01,
-            help="Probability threshold for classifying as spam"
+            help="Probability threshold for classifying as spam (lower = more sensitive)"
+        )
+        
+        # Token analysis depth
+        topn_tokens = st.slider(
+            "Top-N Tokens",
+            min_value=5,
+            max_value=50,
+            value=20,
+            step=5,
+            help="Number of most frequent tokens to display"
         )
         
         st.divider()
         
-        # Model info
+        # Section 3: Model Parameters
+        st.subheader("⚡ Model Parameters")
+        
+        test_size = st.slider(
+            "Test Set Size",
+            min_value=0.1,
+            max_value=0.4,
+            value=0.2,
+            step=0.05,
+            help="Proportion of data reserved for testing"
+        )
+        
+        random_seed = st.number_input(
+            "Random Seed",
+            min_value=0,
+            max_value=9999,
+            value=42,
+            step=1,
+            help="For reproducible results"
+        )
+        
+        st.divider()
+        
+        # Section 4: Model Info
+        st.subheader("📈 Model Info")
         st.info(
             """
-            **Model Info:**
-            - Algorithm: Logistic Regression
+            **Logistic Regression**
             - Test Accuracy: 96.95%
-            - Dataset: 5,574 SMS messages
-            - Spam Ratio: 13.4%
+            - Precision: 100% (spam)
+            - Recall: 77.18% (spam)
+            - F1 Score: 0.871
+            
+            **Dataset**: 5,574 SMS messages
+            **Spam Ratio**: 13.4% (747 spam, 4,827 ham)
             """
         )
+        
+        # Store in session state
+        st.session_state.viz_mode = viz_mode
+        st.session_state.topn_tokens = topn_tokens
+        st.session_state.test_size = test_size
+        st.session_state.random_seed = random_seed
     
     # Main navigation
     tab1, tab2, tab3, tab4 = st.tabs([
@@ -228,37 +337,57 @@ def main():
             
             with col1:
                 st.subheader("Class Distribution")
-                counts = df['label_text'].value_counts()
-                fig = px.bar(
-                    x=counts.index, 
-                    y=counts.values,
-                    labels={'x': 'Class', 'y': 'Count'},
-                    color=['red', 'green'],
-                    text=counts.values
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                
+                # Use visualization mode from sidebar
+                viz_mode = st.session_state.get('viz_mode', 'Plotly (Interactive)')
+                
+                if 'Matplotlib' in viz_mode and HAS_MATPLOTLIB:
+                    fig_mpl = plot_class_distribution_mpl(df)
+                    if fig_mpl:
+                        st.pyplot(fig_mpl)
+                else:
+                    counts = df['label_text'].value_counts()
+                    fig = px.bar(
+                        x=counts.index, 
+                        y=counts.values,
+                        labels={'x': 'Class', 'y': 'Count'},
+                        color=['#ff6b6b', '#51cf66'],
+                        text=counts.values,
+                        color_discrete_sequence=['#ff6b6b', '#51cf66']
+                    )
+                    fig.update_layout(showlegend=False, hovermode='x unified')
+                    st.plotly_chart(fig, use_container_width=True)
             
             with col2:
                 st.subheader("Top Tokens by Class")
-                topn = st.slider("Top-N tokens", min_value=10, max_value=40, value=20, key="topn_slider")
+                topn = st.session_state.get('topn_tokens', 20)
                 
                 for label_text, col_idx in [('spam', 1), ('ham', 0)]:
+                    st.write(f"**{label_text.upper()}** Messages:")
                     subset = df[df['label'] == col_idx]['text']
                     top = token_topn(subset, topn)
                     if top:
-                        toks, freqs = zip(*top)
-                        # Use Plotly for better compatibility
-                        fig = go.Figure(data=[
-                            go.Bar(y=list(toks), x=list(freqs), orientation='h',
-                                   marker=dict(color=list(freqs), colorscale='Viridis'))
-                        ])
-                        fig.update_layout(
-                            title=f"Top {topn} Tokens in {label_text.upper()}",
-                            xaxis_title="Frequency",
-                            yaxis_title="Token",
-                            height=500
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
+                        viz_mode = st.session_state.get('viz_mode', 'Plotly (Interactive)')
+                        
+                        if 'Matplotlib' in viz_mode and HAS_MATPLOTLIB:
+                            fig_mpl = plot_tokens_mpl(df, label_text, col_idx, topn)
+                            if fig_mpl:
+                                st.pyplot(fig_mpl)
+                        else:
+                            toks, freqs = zip(*top)
+                            # Use Plotly for better compatibility
+                            fig = go.Figure(data=[
+                                go.Bar(y=list(toks), x=list(freqs), orientation='h',
+                                       marker=dict(color=list(freqs), colorscale='Viridis'))
+                            ])
+                            fig.update_layout(
+                                title=f"Top {topn} Tokens",
+                                xaxis_title="Frequency",
+                                yaxis_title="Token",
+                                height=400,
+                                showlegend=False
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
         else:
             st.error("Could not load dataset.")
     
