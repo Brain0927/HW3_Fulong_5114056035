@@ -83,12 +83,20 @@ Then open your browser to `http://localhost:8501`
 │   ├── data_loader.py                 # Data loading & preprocessing
 │   ├── model_trainer.py               # Model training & evaluation
 │   └── __init__.py
+├── scripts/
+│   ├── predict_spam.py                # CLI: Single/batch prediction
+│   ├── visualize_spam.py              # CLI: Visualization toolkit
+│   ├── preprocess_emails.py           # CLI: Preprocessing pipeline
+│   └── train_spam_classifier.py       # CLI: Training with parameters
 ├── data/
 │   └── sms_spam_no_header.csv         # Dataset (auto-downloaded)
 ├── models/
-│   ├── logistic_regression.pkl        # Trained model
-│   ├── vectorizer.pkl                 # TF-IDF vectorizer
+│   ├── logistic_regression.pkl        # Trained model (joblib)
+│   ├── vectorizer.pkl                 # TF-IDF vectorizer (joblib)
+│   ├── label_mapping.json             # Label mappings
 │   └── metrics_logistic_regression.json  # Performance metrics
+├── docs/
+│   └── PREPROCESSING.md               # Preprocessing documentation
 ├── notebooks/
 │   ├── 01_exploratory_analysis.ipynb  # EDA notebook
 │   └── 02_model_comparison.ipynb      # Model comparison
@@ -161,7 +169,67 @@ After training, check `models/metrics_logistic_regression.json` for:
 
 ## 🔧 Advanced Usage
 
-### Training with Custom Parameters
+### CLI Tools
+
+#### 1. Single Message Prediction
+```bash
+python scripts/predict_spam.py --text "Free cash now! Click here"
+```
+
+Output:
+```
+============================================================
+Original:   Free cash now! Click here
+Normalized: free cash now click here
+============================================================
+Prediction: SPAM
+Probability (spam): 0.7821
+Threshold: 0.5
+============================================================
+```
+
+#### 2. Batch Prediction from CSV
+```bash
+# Predict on new dataset
+python scripts/predict_spam.py \
+  --input data/sms_spam_no_header.csv \
+  --text-col "Message Column" \
+  --output predictions.csv \
+  --threshold 0.5
+```
+
+Output saves CSV with columns:
+- `text_normalized`: Preprocessed message
+- `spam_probability`: Raw prediction probability
+- `label`: Final prediction (spam/ham)
+
+#### 3. Visualization Tools
+```bash
+# Class distribution
+python scripts/visualize_spam.py \
+  --input data/sms_spam_no_header.csv \
+  --label-col "ham" \
+  --text-col "message text" \
+  --dist --output-dir outputs
+
+# Token frequency analysis
+python scripts/visualize_spam.py \
+  --input data/sms_spam_no_header.csv \
+  --label-col "ham" \
+  --text-col "message text" \
+  --tokens --tokens-for spam --topn 30
+
+# ROC/Precision-Recall curves
+python scripts/visualize_spam.py \
+  --roc-data predictions.csv \
+  --labels true_label \
+  --probs spam_probability \
+  --roc --threshold-sweep
+```
+
+### Python API
+
+#### Training with Custom Parameters
 ```python
 from src.model_trainer import train_model, evaluate_model, prepare_features, split_data
 from src.data_loader import get_data
@@ -179,7 +247,7 @@ metrics = evaluate_model(model, X_val, y_val, X_test, y_test)
 print(metrics['test_f1'])
 ```
 
-### Batch Classification
+#### Batch Classification
 ```python
 from src.model_trainer import load_model, load_vectorizer
 
@@ -197,7 +265,18 @@ for msg, pred, prob in zip(messages, predictions, probabilities):
     print(f"{label}: {msg} ({confidence:.2%})")
 ```
 
-## 📖 OpenSpec Workflow
+## 📖 Documentation
+
+### Detailed Documentation
+
+- **[PREPROCESSING.md](docs/PREPROCESSING.md)** — Complete preprocessing pipeline with step-by-step examples
+  - Text normalization (lowercase, punctuation removal)
+  - Contact masking (URLs, emails, phones → tokens)
+  - Number handling and whitespace normalization
+  - TF-IDF feature extraction
+  - Before/after examples
+
+### OpenSpec Workflow
 
 This project follows the OpenSpec specification-driven development process:
 
@@ -277,6 +356,25 @@ By completing this project, you'll learn:
 - ✅ OpenSpec specification-driven development
 - ✅ Building interactive ML applications with Streamlit
 - ✅ Model deployment and monitoring
+
+## 🚀 Phase 4+ Enhancements
+
+This project includes professional-grade enhancements beyond basic requirements:
+
+### CLI Toolchain
+- **predict_spam.py** — Single message or batch CSV predictions
+- **visualize_spam.py** — Comprehensive visualization suite
+- **label_mapping.json** — Explicit class mapping for production use
+
+### Architecture Improvements
+- **Joblib serialization** — Replaced pickle for better model artifact handling
+- **Column inference** — Automatic label/text column detection in Streamlit
+- **Dataset selector** — Dynamic CSV loading in Streamlit app
+- **Production-ready** — CLI scripts suitable for deployment pipelines
+
+### Documentation
+- **PREPROCESSING.md** — Detailed pipeline documentation with examples
+- **Enhanced README** — Complete usage guide with CLI examples
 
 ## 📄 License
 
