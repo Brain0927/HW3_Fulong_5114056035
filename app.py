@@ -87,17 +87,60 @@ def load_metrics():
 
 
 @st.cache_data
-def load_dataset():
+def list_datasets() -> list:
+    """List all available CSV datasets."""
+    datasets = []
+    for root in ["data", "datasets"]:
+        if os.path.isdir(root):
+            for name in os.listdir(root):
+                if name.endswith(".csv"):
+                    datasets.append(os.path.join(root, name))
+    return sorted(datasets)
+
+
+def infer_columns(df: pd.DataFrame) -> tuple:
+    """Infer label and text columns from dataframe."""
+    cols = list(df.columns)
+    # Try common label column names
+    label_candidates = [c for c in cols if str(c).lower() in ("label", "target", "col_0", "0")]
+    # Try common text column names
+    text_candidates = [c for c in cols if str(c).lower() in ("text", "message", "content", "col_1", "1")]
+    
+    label_col = label_candidates[0] if label_candidates else (cols[0] if cols else None)
+    text_col = text_candidates[0] if text_candidates else (cols[-1] if len(cols) > 1 else (cols[0] if cols else None))
+    
+    return label_col, text_col
+
+
+@st.cache_data
+def load_dataset(path: str = None):
     """Load and preprocess dataset."""
     try:
-        messages, labels = get_data(download=False)
-        df = pd.DataFrame({
-            'text': messages.values,
-            'label': labels.values
-        })
-        df['label_text'] = df['label'].map({0: 'ham', 1: 'spam'})
-        return df
-    except:
+        if path and os.path.exists(path):
+            df = pd.read_csv(path)
+        else:
+            messages, labels = get_data(download=False)
+            df = pd.DataFrame({
+                'text': messages.values,
+                'label': labels.values
+            })
+        
+        # Infer columns
+        label_col, text_col = infer_columns(df)
+        
+        if label_col and text_col:
+            df_clean = df[[label_col, text_col]].copy()
+            df_clean.columns = ['label', 'text']
+            # Map labels to 0/1 if needed
+            if df_clean['label'].dtype == 'object':
+                unique_vals = df_clean['label'].unique()
+                if 'spam' in unique_vals and 'ham' in unique_vals:
+                    df_clean['label'] = df_clean['label'].map({'spam': 1, 'ham': 0})
+            df_clean['label_text'] = df_clean['label'].map({0: 'ham', 1: 'spam'})
+            return df_clean
+        return None
+    except Exception as e:
+        st.error(f"Error loading dataset: {e}")
         return None
 
 
@@ -115,7 +158,20 @@ def main():
     
     # Sidebar controls
     with st.sidebar:
-        st.header("⚙️ Controls")
+        st.header("⚙️ Controls & Data")
+        
+        # Dataset selector
+        datasets = list_datasets()
+        if datasets:
+            selected_ds = st.selectbox(
+                "📁 Select Dataset",
+                options=[None] + datasets,
+                format_func=lambda x: "Default (built-in)" if x is None else x
+            )
+        else:
+            selected_ds = None
+        
+        st.divider()
         
         # Threshold slider
         threshold = st.slider(
@@ -152,7 +208,8 @@ def main():
     with tab1:
         st.header("Data Overview")
         
-        df = load_dataset()
+        # Load selected or default dataset
+        df = load_dataset(selected_ds) if 'selected_ds' in locals() else load_dataset()
         if df is not None:
             col1, col2, col3 = st.columns(3)
             with col1:

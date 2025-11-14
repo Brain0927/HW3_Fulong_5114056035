@@ -1,0 +1,6 @@
+{
+  "positive": "spam",
+  "negative": "ham",
+  "1": "spam",
+  "0": "ham"
+}

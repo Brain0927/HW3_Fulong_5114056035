@@ -1,10 +1,10 @@
-"""
-Model training and evaluation module for spam classification.
-"""
+"""Model training and evaluation module for spam classification."""
 import os
-import pickle
+import json
 import logging
 from typing import Tuple, Dict, Any
+
+import joblib
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -173,39 +173,50 @@ def evaluate_model(
     return metrics
 
 
-def save_model(model: Any, model_name: str) -> None:
-    """Save trained model to disk."""
+def save_model(model, model_name: str) -> None:
+    """Save trained model to disk using joblib."""
     os.makedirs(MODELS_DIR, exist_ok=True)
     model_path = MODEL_PATH_TEMPLATE.format(model_name)
-    with open(model_path, 'wb') as f:
-        pickle.dump(model, f)
+    joblib.dump(model, model_path)
     logger.info(f"Model saved to {model_path}")
 
 
 def save_vectorizer(vectorizer: TfidfVectorizer) -> None:
-    """Save TF-IDF vectorizer to disk."""
+    """Save TF-IDF vectorizer to disk using joblib."""
     os.makedirs(MODELS_DIR, exist_ok=True)
-    with open(VECTORIZER_PATH, 'wb') as f:
-        pickle.dump(vectorizer, f)
+    joblib.dump(vectorizer, VECTORIZER_PATH)
     logger.info(f"Vectorizer saved to {VECTORIZER_PATH}")
 
 
+def save_label_mapping() -> None:
+    """Save label mapping to disk."""
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    label_map = {
+        "positive": "spam",
+        "negative": "ham",
+        "1": "spam",
+        "0": "ham"
+    }
+    label_map_path = os.path.join(MODELS_DIR, "label_mapping.json")
+    with open(label_map_path, 'w', encoding='utf-8') as f:
+        json.dump(label_map, f, indent=2)
+    logger.info(f"Label mapping saved to {label_map_path}")
+
+
 def load_model(model_name: str) -> Any:
-    """Load trained model from disk."""
+    """Load trained model from disk using joblib."""
     model_path = MODEL_PATH_TEMPLATE.format(model_name)
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Model file not found: {model_path}")
-    with open(model_path, 'rb') as f:
-        model = pickle.load(f)
+    model = joblib.load(model_path)
     logger.info(f"Model loaded from {model_path}")
     return model
 
 
 def load_vectorizer() -> TfidfVectorizer:
-    """Load TF-IDF vectorizer from disk."""
+    """Load TF-IDF vectorizer from disk using joblib."""
     if not os.path.exists(VECTORIZER_PATH):
         raise FileNotFoundError(f"Vectorizer file not found: {VECTORIZER_PATH}")
-    with open(VECTORIZER_PATH, 'rb') as f:
-        vectorizer = pickle.load(f)
+    vectorizer = joblib.load(VECTORIZER_PATH)
     logger.info(f"Vectorizer loaded from {VECTORIZER_PATH}")
     return vectorizer

@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 from data_loader import get_data
 from model_trainer import (
     prepare_features, split_data, train_model, evaluate_model,
-    save_model, save_vectorizer
+    save_model, save_vectorizer, save_label_mapping
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -50,6 +50,7 @@ def main(model_name: str = "logistic_regression"):
     logger.info("Step 6: Saving model and vectorizer...")
     save_model(model, model_name)
     save_vectorizer(vectorizer)
+    save_label_mapping()
     
     # 7. Log results
     logger.info("\n" + "="*60)
