@@ -32,69 +32,83 @@ def create_report():
     pdf_file = "outputs/Spam_Classification_Report.pdf"
     os.makedirs("outputs", exist_ok=True)
     
-    doc = SimpleDocTemplate(pdf_file, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    # Use A4 page size for better text display
+    doc = SimpleDocTemplate(pdf_file, pagesize=A4, topMargin=0.7*inch, bottomMargin=0.7*inch, 
+                           leftMargin=0.6*inch, rightMargin=0.6*inch)
     story = []
     
-    # Define styles
+    # Define styles with better text rendering
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
-        fontSize=28,
+        fontSize=26,
         textColor=PURPLE,
-        spaceAfter=6,
+        spaceAfter=8,
+        spaceBefore=4,
         alignment=TA_CENTER,
-        fontName='Helvetica-Bold'
+        fontName='Helvetica-Bold',
+        leading=32
     )
     
     heading_style = ParagraphStyle(
         'CustomHeading',
         parent=styles['Heading2'],
-        fontSize=16,
+        fontSize=14,
         textColor=PURPLE,
-        spaceAfter=12,
-        spaceBefore=12,
-        fontName='Helvetica-Bold'
+        spaceAfter=10,
+        spaceBefore=10,
+        fontName='Helvetica-Bold',
+        leading=18
     )
     
     subheading_style = ParagraphStyle(
         'CustomSubHeading',
         parent=styles['Heading3'],
-        fontSize=12,
+        fontSize=11,
         textColor=DARK_GRAY,
         spaceAfter=6,
-        fontName='Helvetica-Bold'
+        fontName='Helvetica-Bold',
+        leading=14
     )
     
     body_style = ParagraphStyle(
         'CustomBody',
         parent=styles['BodyText'],
-        fontSize=10,
-        alignment=TA_JUSTIFY,
-        spaceAfter=10
+        fontSize=9.5,
+        alignment=TA_LEFT,
+        spaceAfter=10,
+        leading=13
+    )
+    
+    normal_style = ParagraphStyle(
+        'CustomNormal',
+        parent=styles['Normal'],
+        fontSize=9,
+        leading=12,
+        spaceAfter=8
     )
     
     # Title Page
-    story.append(Spacer(1, 0.5*inch))
-    story.append(Paragraph("📧 Spam Email Classification", title_style))
-    story.append(Paragraph("Advanced ML Pipeline with OpenSpec Workflow", styles['Heading3']))
     story.append(Spacer(1, 0.3*inch))
+    story.append(Paragraph("Spam Email Classification", title_style))
+    story.append(Paragraph("Advanced ML Pipeline with OpenSpec Workflow", heading_style))
+    story.append(Spacer(1, 0.25*inch))
     
     # Date
     date_str = datetime.now().strftime("%Y年%m月%d日")
-    story.append(Paragraph(f"<font size=10>Report Generated: {date_str}</font>", styles['Normal']))
-    story.append(Spacer(1, 0.5*inch))
+    story.append(Paragraph(f"Report Generated: {date_str}", normal_style))
+    story.append(Spacer(1, 0.4*inch))
     
     # Executive Summary
     story.append(Paragraph("Executive Summary", heading_style))
     story.append(Paragraph(
-        """This report documents a complete end-to-end machine learning project for spam email classification. 
-        The project implements a logistic regression model trained on 5,574 SMS messages with 96.95% test accuracy. 
-        The implementation includes data preprocessing, model training, evaluation, and an interactive Streamlit web application 
-        for real-time classification and analysis.""",
+        "This report documents a complete end-to-end machine learning project for spam email classification. "
+        "The project implements a logistic regression model trained on 5,574 SMS messages with 96.95% test accuracy. "
+        "The implementation includes data preprocessing, model training, evaluation, and an interactive Streamlit web application for real-time classification.",
         body_style
     ))
-    story.append(Spacer(1, 0.2*inch))
+    story.append(Spacer(1, 0.15*inch))
     
     # Project Overview
     story.append(Paragraph("Project Overview", heading_style))
@@ -117,15 +131,20 @@ def create_report():
         ('BACKGROUND', (0, 0), (-1, 0), PURPLE),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 11),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
         ('BACKGROUND', (0, 1), (-1, -1), LIGHT_GRAY),
         ('GRID', (0, 0), (-1, -1), 1, colors.grey),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, LIGHT_GRAY]),
     ]))
     story.append(overview_table)
-    story.append(Spacer(1, 0.3*inch))
+    story.append(Spacer(1, 0.2*inch))
     
     # Load metrics
     try:
@@ -143,11 +162,11 @@ def create_report():
     # Threshold Sweep Analysis
     story.append(Paragraph("Threshold Sweep Analysis", heading_style))
     story.append(Paragraph(
-        "The following table shows model performance metrics across different decision thresholds, "
-        "allowing optimization for specific use cases (prioritize precision or recall):",
+        "The table below shows model performance metrics across different decision thresholds, "
+        "enabling optimization for specific use cases.",
         body_style
     ))
-    story.append(Spacer(1, 0.1*inch))
+    story.append(Spacer(1, 0.08*inch))
     
     # Create threshold table
     sweep_data = [["Threshold", "Precision", "Recall", "F1 Score"]]
@@ -164,15 +183,20 @@ def create_report():
         ('BACKGROUND', (0, 0), (-1, 0), PURPLE),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('FONTSIZE', (0, 1), (-1, -1), 8.5),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('TOPPADDING', (0, 0), (-1, 0), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
         ('BACKGROUND', (0, 1), (-1, -1), LIGHT_GRAY),
         ('GRID', (0, 0), (-1, -1), 1, colors.grey),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, LIGHT_GRAY]),
     ]))
     story.append(sweep_table)
-    story.append(Spacer(1, 0.3*inch))
+    story.append(Spacer(1, 0.2*inch))
     
     # Page break
     story.append(PageBreak())
@@ -183,7 +207,7 @@ def create_report():
         "The project implements a comprehensive 7-stage text preprocessing pipeline:",
         body_style
     ))
-    story.append(Spacer(1, 0.1*inch))
+    story.append(Spacer(1, 0.08*inch))
     
     preproc_data = [
         ["Stage", "Operation", "Purpose"],
@@ -201,37 +225,37 @@ def create_report():
         ('BACKGROUND', (0, 0), (-1, 0), PURPLE),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('TOPPADDING', (0, 0), (-1, 0), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('ROWHEIGHT', (0, 1), (-1, -1), 20),
         ('BACKGROUND', (0, 1), (-1, -1), LIGHT_GRAY),
         ('GRID', (0, 0), (-1, -1), 1, colors.grey),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, LIGHT_GRAY]),
     ]))
     story.append(preproc_table)
-    story.append(Spacer(1, 0.3*inch))
+    story.append(Spacer(1, 0.2*inch))
     
     # Key Features
     story.append(Paragraph("Key Features", heading_style))
     features_text = """
-    <b>1. Multi-Format CSV Support:</b> The application supports both simple 2-column CSV format and 
-    advanced 9-column preprocessing pipeline format for detailed text transformation analysis.<br/>
+    <b>1. Multi-Format CSV Support:</b> Supports simple 2-column and 9-column preprocessing pipeline formats.<br/>
     <br/>
-    <b>2. Interactive Dashboard:</b> Streamlit-based web application with real-time classification, 
-    token analysis, and model performance visualization.<br/>
+    <b>2. Interactive Dashboard:</b> Streamlit-based web application with real-time classification and token analysis.<br/>
     <br/>
-    <b>3. Advanced Analytics:</b> Threshold sweep analysis, ROC curves, confusion matrices, and 
-    precision-recall curves for comprehensive model evaluation.<br/>
+    <b>3. Advanced Analytics:</b> Threshold sweep, ROC curves, confusion matrices, and precision-recall curves.<br/>
     <br/>
-    <b>4. CLI Tools:</b> Command-line utilities for batch prediction, visualization generation, 
-    and model training with custom parameters.<br/>
+    <b>4. CLI Tools:</b> Command-line utilities for batch prediction and visualization generation.<br/>
     <br/>
-    <b>5. Professional Documentation:</b> Comprehensive README, quick-start guides, and delivery summaries 
-    with usage examples and technical details.
+    <b>5. Professional Documentation:</b> README, quick-start guides, and technical delivery summaries.
     """
-    story.append(Paragraph(features_text, body_style))
-    story.append(Spacer(1, 0.2*inch))
+    story.append(Paragraph(features_text, normal_style))
+    story.append(Spacer(1, 0.15*inch))
     
     # Page break
     story.append(PageBreak())
@@ -257,49 +281,51 @@ def create_report():
         ('BACKGROUND', (0, 0), (-1, 0), PURPLE),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('TOPPADDING', (0, 0), (-1, 0), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
         ('BACKGROUND', (0, 1), (-1, -1), LIGHT_GRAY),
         ('GRID', (0, 0), (-1, -1), 1, colors.grey),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, LIGHT_GRAY]),
     ]))
     story.append(tech_table)
-    story.append(Spacer(1, 0.3*inch))
+    story.append(Spacer(1, 0.2*inch))
     
     # Project Structure
     story.append(Paragraph("Project Structure", heading_style))
     structure_text = """
-    <font face="Courier" size="8">
-    .<br/>
-    ├── app.py                         # Streamlit web application<br/>
-    ├── train.py                       # Model training script<br/>
-    ├── requirements.txt               # Python dependencies<br/>
-    ├── README.md                      # Project documentation<br/>
+    <font face="Courier" size="7">
+    . (root)<br/>
+    ├── app.py - Streamlit web application<br/>
+    ├── train.py - Model training script<br/>
+    ├── requirements.txt - Python dependencies<br/>
     ├── src/<br/>
-    │   ├── data_loader.py            # Data loading & preprocessing<br/>
-    │   └── model_trainer.py          # Model training & evaluation<br/>
+    │   ├── data_loader.py - Data loading<br/>
+    │   └── model_trainer.py - Model training<br/>
     ├── scripts/<br/>
-    │   ├── predict_spam.py           # CLI prediction tool<br/>
-    │   ├── visualize_spam.py         # Visualization toolkit<br/>
-    │   └── generate_report.py        # PDF report generation<br/>
+    │   ├── predict_spam.py - CLI prediction<br/>
+    │   ├── visualize_spam.py - Visualizations<br/>
+    │   └── generate_report.py - PDF report<br/>
     ├── data/<br/>
-    │   ├── sms_spam_clean.csv        # Clean 2-column format<br/>
-    │   ├── sms_spam_preprocessing.csv# 9-column preprocessing pipeline<br/>
-    │   └── sms_spam_no_header.csv    # Original format<br/>
+    │   ├── sms_spam_clean.csv - 2-column format<br/>
+    │   ├── sms_spam_preprocessing.csv - 9-column pipeline<br/>
+    │   └── sms_spam_no_header.csv - Original format<br/>
     ├── models/<br/>
-    │   ├── logistic_regression.pkl   # Trained model (joblib)<br/>
-    │   ├── vectorizer.pkl            # TF-IDF vectorizer<br/>
-    │   ├── label_mapping.json        # Label mappings<br/>
-    │   ├── metrics_logistic_regression.json # Performance metrics<br/>
-    │   ├── threshold_sweep.json      # Threshold analysis<br/>
-    │   └── test_predictions.json     # Test predictions for ROC<br/>
-    └── docs/<br/>
-        └── PREPROCESSING.md          # Preprocessing documentation<br/>
+    │   ├── logistic_regression.pkl - Trained model<br/>
+    │   ├── vectorizer.pkl - TF-IDF vectorizer<br/>
+    │   ├── metrics_logistic_regression.json - Metrics<br/>
+    │   ├── threshold_sweep.json - Threshold analysis<br/>
+    │   └── test_predictions.json - Test predictions<br/>
+    └── docs/ - Documentation files
     </font>
     """
-    story.append(Paragraph(structure_text, body_style))
-    story.append(Spacer(1, 0.2*inch))
+    story.append(Paragraph(structure_text, normal_style))
+    story.append(Spacer(1, 0.15*inch))
     
     # Page break
     story.append(PageBreak())
@@ -328,70 +354,69 @@ def create_report():
         ('BACKGROUND', (0, 0), (-1, 0), PURPLE),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('TOPPADDING', (0, 0), (-1, 0), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
         ('BACKGROUND', (0, 1), (-1, -1), LIGHT_GRAY),
         ('GRID', (0, 0), (-1, -1), 1, colors.grey),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, LIGHT_GRAY]),
     ]))
     story.append(perf_table)
-    story.append(Spacer(1, 0.3*inch))
+    story.append(Spacer(1, 0.2*inch))
     
     # Usage Instructions
     story.append(Paragraph("How to Use", heading_style))
     
     usage_text = """
     <b>1. Running the Web Application:</b><br/>
-    <font face="Courier">streamlit run app.py</font><br/>
-    Open your browser to http://localhost:8501<br/>
+    <font face="Courier" size="8">streamlit run app.py</font><br/>
     <br/>
     
     <b>2. Making Predictions (CLI):</b><br/>
-    <font face="Courier">python scripts/predict_spam.py --text "Your message here"</font><br/>
+    <font face="Courier" size="8">python scripts/predict_spam.py --text "message"</font><br/>
     <br/>
     
     <b>3. Batch Predictions:</b><br/>
-    <font face="Courier">python scripts/predict_spam.py --input data.csv --output predictions.csv</font><br/>
+    <font face="Courier" size="8">python scripts/predict_spam.py --input data.csv</font><br/>
     <br/>
     
-    <b>4. Generating Visualizations:</b><br/>
-    <font face="Courier">python scripts/visualize_spam.py --input data.csv --dist --tokens</font><br/>
-    <br/>
-    
-    <b>5. Training Model:</b><br/>
-    <font face="Courier">python train.py --model logistic_regression</font><br/>
+    <b>4. Training Model:</b><br/>
+    <font face="Courier" size="8">python train.py</font>
     """
-    story.append(Paragraph(usage_text, body_style))
-    story.append(Spacer(1, 0.3*inch))
+    story.append(Paragraph(usage_text, normal_style))
+    story.append(Spacer(1, 0.2*inch))
     
     # Conclusions
     story.append(Paragraph("Conclusions & Future Work", heading_style))
     
     conclusion_text = """
     <b>Achievements:</b><br/>
-    • Successfully built a high-accuracy spam classification model (96.95% accuracy)<br/>
-    • Implemented comprehensive data preprocessing pipeline with 7 stages<br/>
-    • Created professional interactive dashboard with real-time classification<br/>
-    • Developed CLI tools for batch processing and automation<br/>
-    • Demonstrated OpenSpec specification-driven development workflow<br/>
+    • Built high-accuracy spam classification model (96.95% accuracy)<br/>
+    • Implemented comprehensive 7-stage preprocessing pipeline<br/>
+    • Created professional interactive dashboard with Streamlit<br/>
+    • Developed CLI tools for batch processing<br/>
+    • Demonstrated OpenSpec specification-driven workflow<br/>
     <br/>
     
     <b>Future Enhancements:</b><br/>
-    • Support for multiple languages and character sets<br/>
+    • Support for multiple languages<br/>
     • Ensemble models combining multiple algorithms<br/>
-    • Active learning with user feedback integration<br/>
+    • Active learning with user feedback<br/>
     • Advanced NLP techniques (BERT, transformers)<br/>
-    • Deployment to cloud platforms (AWS, GCP, Azure)<br/>
-    • Real-time model retraining with new data<br/>
+    • Cloud platform deployment
     """
-    story.append(Paragraph(conclusion_text, body_style))
-    story.append(Spacer(1, 0.5*inch))
+    story.append(Paragraph(conclusion_text, normal_style))
+    story.append(Spacer(1, 0.4*inch))
     
     # Footer
     story.append(Paragraph(
-        f"<font size='8' color='gray'>Generated on {date_str} | GitHub: github.com/Brain0927/HW3_Fulong_5114056035</font>",
-        ParagraphStyle('Footer', parent=styles['Normal'], alignment=TA_CENTER)
+        f"Generated: {date_str} | Project: Spam Classification | GitHub: Brain0927/HW3_Fulong_5114056035",
+        ParagraphStyle('Footer', parent=styles['Normal'], fontSize=7, alignment=TA_CENTER, textColor=colors.grey)
     ))
     
     # Build PDF
